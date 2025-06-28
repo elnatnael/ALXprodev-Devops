@@ -1,8 +1,10 @@
 #!/bin/bash
-jq -r '. as $p | "\($p.name) \($p.types[0].type.name) \($p.weight) \($p.height)"' data.json | awk '{
-  name=toupper(substr($1,1,1)) tolower(substr($1,2))
-  type=toupper(substr($2,1,1)) tolower(substr($2,2))
-  weight=$3 / 10 "kg"
-  height=$4 / 10 "m"
-  print name " is of type " type ", weighs " weight ", and is " height " tall."
-}'
+name=$(jq -r '.name' data.json)
+type=$(jq -r '.types[0].type.name' data.json)
+weight=$(jq -r '.weight / 10' data.json)
+height=$(jq -r '.height / 10' data.json)
+
+name=$(echo "$name" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
+type=$(echo "$type" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
+
+echo "$name is of type $type, weighs ${weight}kg, and is ${height}m tall."
