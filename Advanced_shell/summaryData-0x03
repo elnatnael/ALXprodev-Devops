@@ -55,3 +55,5 @@ awk -F, 'NR>1 { h+=$2; w+=$3; count++ }
            else
              print "No data to calculate averages."
          }' "$REPORT_FILE"
+
+exit 0
