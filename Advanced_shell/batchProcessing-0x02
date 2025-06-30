@@ -1,28 +1,46 @@
 #!/bin/bash
 
-# Create the output directory if it doesn't exist
-mkdir -p pokemon_data
+# Directory to store JSON data
+DATA_DIR="pokemon_data"
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
-# List of Pokémon to fetch
-pokemon_list=(bulbasaur ivysaur venusaur charmander charmeleon)
+# Create directory if it doesn't exist
+mkdir -p "$DATA_DIR"
 
-# Base API URL
-base_url="https://pokeapi.co/api/v2/pokemon"
+# Function to fetch data with retry logic
+fetch_pokemon_data() {
+  local name="$1"
+  local url="https://pokeapi.co/api/v2/pokemon/$name"
+  local output_file="$DATA_DIR/${name}.json"
+  local attempt=1
+  local max_attempts=3
 
-# Loop through each Pokémon name
-for pokemon in "${pokemon_list[@]}"; do
-  echo "Fetching data for $pokemon..."
-  
-  # Perform the API request and save to file
-  curl -s "${base_url}/${pokemon}" -o "pokemon_data/${pokemon}.json"
-  
-  # Check if the file was created and is not empty
-  if [[ -s "pokemon_data/${pokemon}.json" ]]; then
-    echo "Saved data to pokemon_data/${pokemon}.json ✅"
-  else
-    echo "❌ Failed to fetch data for $pokemon"
-  fi
+  echo "Fetching data for $name..."
 
-  # Wait to avoid rate limiting (e.g., 2 seconds)
-  sleep 2
+  while [ $attempt -le $max_attempts ]; do
+    # Make the API request
+    response=$(curl -s -w "%{http_code}" -o "$output_file" "$url")
+
+    http_status="${response: -3}" # Get the last 3 characters for HTTP status code
+
+    if [ "$http_status" -eq 200 ]; then
+      echo "Saved data to $output_file ✅"
+      return 0
+    else
+      echo "Attempt $attempt failed (HTTP $http_status). Retrying..."
+      attempt=$((attempt + 1))
+      sleep 1
+    fi
+  done
+
+  echo "❌ Failed to fetch data for $name after $max_attempts attempts."
+  echo "$name" >> "$DATA_DIR/error_log.txt"
+  rm -f "$output_file"  # Remove incomplete file
+  return 1
+}
+
+# Loop through Pokémon list
+for pokemon in "${POKEMONS[@]}"; do
+  fetch_pokemon_data "$pokemon"
+  sleep 1  # Delay to prevent hitting API rate limits
 done
