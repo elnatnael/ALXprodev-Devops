@@ -3,11 +3,27 @@
 # Input JSON file
 JSON_FILE="pikachu.json"
 
-# Extract required fields using jq
-name=$(jq -r '.name' "$JSON_FILE" | sed 's/.*/\u&/')  # Capitalize first letter
-height=$(jq -r '.height' "$JSON_FILE" | awk '{printf "%.1f", $1 / 10}')  # decimeters to meters
-weight=$(jq -r '.weight' "$JSON_FILE" | awk '{printf "%.1f", $1 / 10}')  # hectograms to kilograms
-type=$(jq -r '.types[0].type.name' "$JSON_FILE" | sed 's/.*/\u&/')  # Capitalize first letter
+# Check if file exists
+if [[ ! -f "$JSON_FILE" ]]; then
+  echo "Error: $JSON_FILE not found."
+  exit 1
+fi
 
-# Final formatted output
+# Extract and format values using jq and awk
+name=$(jq -r '.name' "$JSON_FILE" | sed 's/.*/\u&/')  # Capitalize name
+type=$(jq -r '.types[0].type.name' "$JSON_FILE" | sed 's/.*/\u&/')  # Capitalize type
+
+# Get raw height and weight
+raw_height=$(jq -r '.height' "$JSON_FILE")  # in decimeters
+raw_weight=$(jq -r '.weight' "$JSON_FILE")  # in hectograms
+
+# Convert to meters and kilograms
+height=$(awk -v h="$raw_height" 'BEGIN { printf "%.1f", h / 10 }')
+weight=$(awk -v w="$raw_weight" 'BEGIN { printf "%.1f", w / 10 }')
+
+# Strip trailing .0 if needed
+height=$(echo "$height" | sed 's/\.0$//')
+weight=$(echo "$weight" | sed 's/\.0$//')
+
+# Output in required format
 echo "$name is of type $type, weighs ${weight}kg, and is ${height}m tall."
