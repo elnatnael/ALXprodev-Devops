@@ -1,1 +1,56 @@
-asd
+#!/bin/bash
+
+# Directory to store JSON files
+DATA_DIR="pokemon_data"
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# Create directory if it doesn't exist
+mkdir -p "$DATA_DIR"
+rm -f "$DATA_DIR/error_log.txt"  # Clear any old errors
+
+# Function to fetch Pokémon data with retry logic
+fetch_pokemon() {
+  local name="$1"
+  local url="https://pokeapi.co/api/v2/pokemon/$name"
+  local output_file="$DATA_DIR/${name}.json"
+
+  echo "Fetching data for $name..."
+
+  for attempt in {1..3}; do
+    response=$(curl -s -w "%{http_code}" -o "$output_file" "$url")
+    status_code="${response: -3}"
+
+    if [ "$status_code" -eq 200 ]; then
+      echo "Saved data to $output_file ✅"
+      return 0
+    else
+      echo "Attempt $attempt for $name failed (HTTP $status_code)"
+      sleep 1
+    fi
+  done
+
+  echo "❌ Failed to fetch data for $name after 3 attempts."
+  echo "$name" >> "$DATA_DIR/error_log.txt"
+  rm -f "$output_file"
+}
+
+# Loop to fetch Pokémon data in parallel
+for pokemon in "${POKEMONS[@]}"; do
+  fetch_pokemon "$pokemon" &
+done
+
+# Wait for all background fetches to finish
+wait
+
+echo ""
+echo "✅ All parallel fetch operations complete."
+
+# Show error log if any
+if [ -f "$DATA_DIR/error_log.txt" ]; then
+  echo "Some Pokémon failed to fetch:"
+  cat "$DATA_DIR/error_log.txt"
+else
+  echo "All Pokémon fetched successfully! 🎉"
+fi
+
+exit 0
