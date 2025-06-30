@@ -4,9 +4,9 @@
 DATA_DIR="pokemon_data"
 POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
-# Create directory if it doesn't exist
+# Create directory
 mkdir -p "$DATA_DIR"
-rm -f "$DATA_DIR/error_log.txt"  # Clear any old errors
+rm -f "$DATA_DIR/error_log.txt"  # Clear old logs
 
 # Function to fetch Pokémon data with retry logic
 fetch_pokemon() {
@@ -34,18 +34,33 @@ fetch_pokemon() {
   rm -f "$output_file"
 }
 
-# Loop to fetch Pokémon data in parallel
+# Launch fetches in parallel and track PIDs
+pids=()
 for pokemon in "${POKEMONS[@]}"; do
   fetch_pokemon "$pokemon" &
+  pids+=($!)
 done
 
-# Wait for all background fetches to finish
-wait
+# Show running jobs
+echo ""
+echo "📋 Background jobs:"
+jobs
+
+# Wait for all background processes to finish
+for pid in "${pids[@]}"; do
+  wait "$pid"
+done
 
 echo ""
 echo "✅ All parallel fetch operations complete."
 
-# Show error log if any
+# Check again for any remaining jobs (should be none)
+if jobs %%; then
+  echo "⚠️ Some jobs may still be running — killing..."
+  jobs -p | xargs kill -9
+fi
+
+# Show errors if any
 if [ -f "$DATA_DIR/error_log.txt" ]; then
   echo "Some Pokémon failed to fetch:"
   cat "$DATA_DIR/error_log.txt"
